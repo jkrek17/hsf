@@ -1,32 +1,48 @@
+const NWS_API = 'https://api.weather.gov';
+const NWS_USER_AGENT = 'forecast-viewer (https://github.com/jkrek17/hsf; no reply expected)';
+
 const IEM_SEARCH = 'https://mesonet.agron.iastate.edu/json/nwstext_search.py';
 const IEM_RETRIEVE = 'https://mesonet.agron.iastate.edu/cgi-bin/afos/retrieve.py';
+
+/** NWS Products API location codes for High Seas Forecast (HSF). */
+const HSF_LOCATION = {
+  atlantic: 'AT1',
+  pacific: 'EP1'
+};
 
 const PIL_BY_OCEAN = {
   atlantic: 'HSFAT1',
   pacific: 'HSFEP1'
 };
 
-const OPC_PATH = {
-  atlantic: '/shtml/NFDHSFAT1.txt',
-  pacific: '/shtml/NFDHSFEP1.txt'
-};
+async function nwsJson(url) {
+  const res = await fetch(url, {
+    headers: {
+      'User-Agent': NWS_USER_AGENT,
+      Accept: 'application/geo+json, application/json'
+    }
+  });
+  if (!res.ok) throw new Error('NWS API HTTP ' + res.status);
+  return res.json();
+}
 
 /**
- * Fetch live High Seas Forecast text from OPC.
- * Prefer same-origin /opc (see serve.py or your deploy proxy); fall back to direct URL
- * (works only if the host allows CORS, which OPC does not — use a proxy in production).
+ * Latest High Seas Forecast text from api.weather.gov (same product as OPC .txt).
+ * https://api.weather.gov/products/types/HSF/locations/{AT1|EP1}
  */
 export async function fetchLiveForecast(ocean) {
-  const path = OPC_PATH[ocean] || OPC_PATH.atlantic;
-  var proxied = '/opc' + path;
-  var res = await fetch(proxied, { cache: 'no-store' }).catch(function () {
-    return null;
-  });
-  if (!res || !res.ok) {
-    res = await fetch('https://ocean.weather.gov' + path, { cache: 'no-store' });
-  }
-  if (!res.ok) throw new Error('OPC HTTP ' + res.status);
-  return res.text();
+  const loc = HSF_LOCATION[ocean] || HSF_LOCATION.atlantic;
+  const listUrl = `${NWS_API}/products/types/HSF/locations/${loc}`;
+  const list = await nwsJson(listUrl);
+  const graph = list['@graph'] || [];
+  if (graph.length === 0) throw new Error('No HSF products returned for ' + loc);
+  const productId = graph[0].id;
+  if (!productId) throw new Error('Missing product id in NWS list response');
+  const productUrl = `${NWS_API}/products/${productId}`;
+  const product = await nwsJson(productUrl);
+  var text = product.productText;
+  if (text == null || text === '') throw new Error('Empty productText from NWS API');
+  return typeof text === 'string' ? text : String(text);
 }
 
 function pilForOcean(ocean) {

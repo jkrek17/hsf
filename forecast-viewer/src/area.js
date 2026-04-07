@@ -1,4 +1,4 @@
-import * as turf from '@turf/turf';
+import turf from '@turf/turf';
 
 const NM2_PER_M2 = 1 / 3429904;
 
