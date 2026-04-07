@@ -5,16 +5,6 @@ let map;
 let layerGroup;
 let boundaryLayer = null;
 
-function leafletLatLngsForBounds(bounds, area) {
-  if (!area.crossesDateline) {
-    return normalizePolygonForDateline(bounds);
-  }
-  return bounds.map(function (c) {
-    var lon = c.lon > 180 ? c.lon - 360 : c.lon;
-    return [c.lat, lon];
-  });
-}
-
 export function initMap() {
   map = L.map('map', { center: [50, -50], zoom: 4, minZoom: 2, maxZoom: 10 });
   L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
@@ -75,7 +65,6 @@ export function renderParsedOutput(forecast) {
 export function renderForecast(forecast, filter, warningFilter, layerVisibility) {
   filter = filter || 'all';
   warningFilter = warningFilter || 'all';
-  var area = getForecastArea();
 
   layerGroup.clearLayers();
   if (boundaryLayer) {
@@ -119,7 +108,7 @@ export function renderForecast(forecast, filter, warningFilter, layerVisibility)
     for (var i = 0; i < filteredFog.length; i++) {
       var fog = filteredFog[i];
       if (fog.bounds.length >= 3) {
-        L.polygon(leafletLatLngsForBounds(fog.bounds, area), { color: '#6b7280', fillColor: '#6b7280', fillOpacity: 0.25, weight: 1 })
+        L.polygon(normalizePolygonForDateline(fog.bounds), { color: '#6b7280', fillColor: '#6b7280', fillOpacity: 0.25, weight: 1 })
           .addTo(layerGroup)
           .bindPopup(
             '<div class="popup-header fog"><div class="popup-title"><span class="popup-badge fog">Fog</span>Dense Fog</div></div><div class="popup-body"><div class="popup-row"><span class="popup-label">Visibility</span><span class="popup-value">Reduced</span></div>' +
@@ -135,7 +124,7 @@ export function renderForecast(forecast, filter, warningFilter, layerVisibility)
     for (var i = 0; i < filteredSpray.length; i++) {
       var spray = filteredSpray[i];
       if (spray.bounds.length >= 3) {
-        L.polygon(leafletLatLngsForBounds(spray.bounds, area), { color: '#06b6d4', fillColor: '#06b6d4', fillOpacity: 0.3, weight: 2 })
+        L.polygon(normalizePolygonForDateline(spray.bounds), { color: '#06b6d4', fillColor: '#06b6d4', fillOpacity: 0.3, weight: 2 })
           .addTo(layerGroup)
           .bindPopup(
             '<div class="popup-header spray"><div class="popup-title"><span class="popup-badge spray">Spray</span>Freezing Spray</div></div><div class="popup-body"><div class="popup-row"><span class="popup-label">Severity</span><span class="popup-value">' +
@@ -194,7 +183,7 @@ export function renderForecast(forecast, filter, warningFilter, layerVisibility)
         (w.forecast ? '<div class="popup-forecast">Forecast: ' + w.forecast + '</div>' : '') +
         (w.description ? '<div class="popup-source"><span class="popup-label">Source Text</span><div class="popup-source-text">' + w.description + '</div></div>' : '') +
         '</div>';
-      L.polygon(leafletLatLngsForBounds(w.bounds, area), { color: color, fillColor: color, fillOpacity: 0.2, weight: 2 }).addTo(layerGroup).bindPopup(popup);
+      L.polygon(normalizePolygonForDateline(w.bounds), { color: color, fillColor: color, fillOpacity: 0.2, weight: 2 }).addTo(layerGroup).bindPopup(popup);
     }
   }
 
@@ -214,7 +203,6 @@ export function renderForecast(forecast, filter, warningFilter, layerVisibility)
         iconSize: [36, 46],
         iconAnchor: [18, 23]
       });
-      var lonForMarker = low.position.lon > 180 ? low.position.lon - 360 : low.position.lon;
       var lonDisp =
         low.position.lon > 0 ? (low.position.lon > 180 ? (360 - low.position.lon).toFixed(1) + 'W' : low.position.lon.toFixed(1) + 'E') : Math.abs(low.position.lon).toFixed(1) + 'W';
       var popup =
@@ -228,7 +216,7 @@ export function renderForecast(forecast, filter, warningFilter, layerVisibility)
         (low.movement ? '<div class="popup-row"><span class="popup-label">Movement</span><span class="popup-value">' + low.movement.direction + ' at ' + low.movement.speed + ' kt</span></div>' : '') +
         (low.forecast ? '<div class="popup-forecast">Forecast: ' + low.forecast + '</div>' : '') +
         '</div>';
-      L.marker([low.position.lat, lonForMarker], { icon: icon }).addTo(layerGroup).bindPopup(popup);
+      L.marker([low.position.lat, low.position.lon], { icon: icon }).addTo(layerGroup).bindPopup(popup);
     }
   }
 
@@ -250,15 +238,10 @@ export function updateBoundary(area, layerVisibility) {
   var bounds;
   if (area.crossesDateline && area.westBoundary) {
     bounds = [];
-    for (var i = 0; i < area.westBoundary.length; i++) {
-      var lon = area.westBoundary[i].lon > 180 ? area.westBoundary[i].lon - 360 : area.westBoundary[i].lon;
-      bounds.push([area.westBoundary[i].lat, lon]);
-    }
-    var eLon = area.east > 180 ? area.east - 360 : area.east;
-    bounds.push([area.north, eLon]);
-    bounds.push([area.south, eLon]);
-    var w0 = area.westBoundary[0].lon > 180 ? area.westBoundary[0].lon - 360 : area.westBoundary[0].lon;
-    bounds.push([area.westBoundary[0].lat, w0]);
+    for (var i = 0; i < area.westBoundary.length; i++) bounds.push([area.westBoundary[i].lat, area.westBoundary[i].lon]);
+    bounds.push([area.north, area.east]);
+    bounds.push([area.south, area.east]);
+    bounds.push([area.westBoundary[0].lat, area.westBoundary[0].lon]);
   } else {
     bounds = [
       [area.north, area.west],
