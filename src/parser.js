@@ -237,7 +237,7 @@ function parseFromToBetween(text) {
     if (latMatch[4].toUpperCase() === 'S') lat2 = -lat2;
     result.latRange = [Math.min(lat1,lat2), Math.max(lat1,lat2)];
   }
-  var lonMatch = text.match(/BETWEEN\s+(\d+)(E|W)\s+AND\s+(\d+)(E|W)/i);
+  var lonMatch = text.match(/BETWEEN\s+(\d+)(E|W)\s+(?:AND|TO)\s+(\d+)(E|W)/i);
   if (lonMatch) {
     var lon1 = parseFloat(lonMatch[1]); var lon2 = parseFloat(lonMatch[3]);
     if (lonMatch[2].toUpperCase() === 'W') lon1 = FORECAST_AREA.crossesDateline ? 360-lon1 : -lon1;
@@ -450,7 +450,7 @@ export function parseForecast(text) {
   if (validMatch) result.validTime = validMatch[1];
   var warningBlocks = text.split(/(?=\.{3}[A-Z]+\s+WARNING\.{3}|…[A-Z]+\s+WARNING…)/i);
   var globalWarningId = 0; var blockIndex = 0;
-  var fogPattern = /\.(?:(\d+)\s*HOUR\s*FORECAST\s+)?DENSE\s+FOG[^.]*FROM\s+(\d+)(N|S)\s+TO\s+(\d+)(N|S)\s+BETWEEN\s+(\d+)(W|E)\s+AND\s+(\d+)(W|E)/gi;
+  var fogPattern = /\.(?:(\d+)\s*HOUR\s*FORECAST\s+)?DENSE\s+FOG[^.]*FROM\s+(\d+)(N|S)\s+TO\s+(\d+)(N|S)\s+BETWEEN\s+(\d+)(W|E)\s+(?:AND|TO)\s+(\d+)(W|E)/gi;
   var fogMatch;
   while ((fogMatch = fogPattern.exec(text)) !== null) {
     var fh = fogMatch[1] ? fogMatch[1] + 'h' : 'current';
