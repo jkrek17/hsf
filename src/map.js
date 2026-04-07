@@ -62,9 +62,10 @@ export function renderParsedOutput(forecast) {
   output.innerHTML = html;
 }
 
-export function renderForecast(forecast, filter, warningFilter, layerVisibility) {
+export function renderForecast(forecast, filter, warningFilter, layerVisibility, windAreaById) {
   filter = filter || 'all';
   warningFilter = warningFilter || 'all';
+  windAreaById = windAreaById || null;
 
   layerGroup.clearLayers();
   if (boundaryLayer) {
@@ -165,6 +166,22 @@ export function renderForecast(forecast, filter, warningFilter, layerVisibility)
     if (w.bounds.length >= 3) {
       var badgeClass = w.warningType === 'HURRICANE' ? 'hurricane' : w.warningType === 'STORM' ? 'storm' : 'gale';
       var badgeText = w.warningType === 'HURRICANE' ? 'Hurricane' : w.warningType === 'STORM' ? 'Storm' : w.warningType === 'SUB-GALE' ? 'Sub-Gale' : 'Gale';
+      var areaRows = '';
+      if (windAreaById && w.id && windAreaById.has(w.id)) {
+        var am = windAreaById.get(w.id);
+        if (am && typeof am.area_nm2 === 'number') {
+          areaRows +=
+            '<div class="popup-row"><span class="popup-label">Area</span><span class="popup-value">' +
+            Math.round(am.area_nm2).toLocaleString() +
+            ' nm²</span></div>';
+          if (typeof am.area_water_nm2 === 'number') {
+            areaRows +=
+              '<div class="popup-row"><span class="popup-label">Water area</span><span class="popup-value">' +
+              Math.round(am.area_water_nm2).toLocaleString() +
+              ' nm²</span></div>';
+          }
+        }
+      }
       var popup =
         '<div class="popup-header ' +
         badgeClass +
@@ -180,6 +197,7 @@ export function renderForecast(forecast, filter, warningFilter, layerVisibility)
         w.windSpeed.max +
         ' KT</span></div>' +
         (w.seas ? '<div class="popup-row"><span class="popup-label">Sea Height</span><span class="popup-value">' + w.seas.min + '-' + w.seas.max + ' M</span></div>' : '') +
+        areaRows +
         (w.forecast ? '<div class="popup-forecast">Forecast: ' + w.forecast + '</div>' : '') +
         (w.description ? '<div class="popup-source"><span class="popup-label">Source Text</span><div class="popup-source-text">' + w.description + '</div></div>' : '') +
         '</div>';

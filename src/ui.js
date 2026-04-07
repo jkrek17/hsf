@@ -159,7 +159,7 @@ function setValidTimeLine() {
 
 function redraw() {
   if (!currentForecast) return;
-  renderForecast(currentForecast, currentFilter, currentWarning, layerVisibility);
+  renderForecast(currentForecast, currentFilter, currentWarning, layerVisibility, windAreaMetricsMap);
   updateAreaStats();
 }
 
