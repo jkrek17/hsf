@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Marine Weather Forecast Viewer</title>
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="header-title">
+        <h1>Marine Weather Forecast Viewer</h1>
+        <div class="ocean-buttons">
+          <button type="button" id="btn-atlantic" class="ocean-btn active">Atlantic</button>
+          <button type="button" id="btn-pacific" class="ocean-btn">Pacific</button>
+        </div>
+      </div>
+      <div class="header-controls">
+        <div class="archive-row">
+          <span class="filter-label">Archive:</span>
+          <input type="date" id="archive-date" class="archive-date" title="UTC date">
+          <select id="archive-issuance" class="archive-issuance" title="Issuance time (UTC)">
+            <option value="">Select date first…</option>
+          </select>
+          <button type="button" id="archive-prev" class="ocean-btn archive-nav" title="Previous issuance">◀</button>
+          <button type="button" id="archive-next" class="ocean-btn archive-nav" title="Next issuance">▶</button>
+          <button type="button" id="archive-live" class="ocean-btn">Live</button>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">Hour:</span>
+          <button type="button" class="filter-btn active" data-filter="all">All</button>
+          <button type="button" class="filter-btn" data-filter="current">Now</button>
+          <button type="button" class="filter-btn" data-filter="6">6h</button>
+          <button type="button" class="filter-btn" data-filter="12">12h</button>
+          <button type="button" class="filter-btn" data-filter="18">18h</button>
+          <button type="button" class="filter-btn" data-filter="24">24h</button>
+          <button type="button" class="filter-btn" data-filter="30">30h</button>
+          <button type="button" class="filter-btn" data-filter="36">36h</button>
+          <button type="button" class="filter-btn" data-filter="42">42h</button>
+          <button type="button" class="filter-btn" data-filter="48">48h</button>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">Warning:</span>
+          <select id="warning-filter" class="warning-select">
+            <option value="all">All Warnings</option>
+          </select>
+        </div>
+        <div class="header-stats">
+          <span id="stats-lows">0 Lows</span>
+          <span id="stats-winds">0 Wind Areas</span>
+          <span id="stats-spray">0 Spray Lines</span>
+          <button type="button" id="export-geojson-btn" class="ocean-btn" title="Export visible features to GeoJSON">&#8615; GeoJSON</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="main-content">
+      <div class="map-container">
+        <div id="map"></div>
+        <div class="legend">
+          <h3>Layers</h3>
+          <div class="legend-section">
+            <h4>WARNINGS</h4>
+            <label class="layer-toggle">
+              <input type="checkbox" data-layer="hurricane" checked>
+              <span class="legend-color" style="background:#a855f7"></span>
+              Hurricane (64+ kt)
+            </label>
+            <label class="layer-toggle">
+              <input type="checkbox" data-layer="storm" checked>
+              <span class="legend-color" style="background:#ef4444"></span>
+              Storm (48-63 kt)
+            </label>
+            <label class="layer-toggle">
+              <input type="checkbox" data-layer="gale" checked>
+              <span class="legend-color" style="background:#f59e0b"></span>
+              Gale (34-47 kt)
+            </label>
+            <label class="layer-toggle">
+              <input type="checkbox" data-layer="subgale" checked>
+              <span class="legend-color" style="background:#22c55e"></span>
+              Sub-Gale (&lt;34 kt)
+            </label>
+          </div>
+          <div class="legend-section">
+            <h4>FEATURES</h4>
+            <label class="layer-toggle">
+              <input type="checkbox" data-layer="lows" checked>
+              <span class="legend-icon">L</span>
+              Low Pressure Centers
+            </label>
+            <label class="layer-toggle">
+              <input type="checkbox" data-layer="spray" checked>
+              <span class="legend-line" style="background:#06b6d4"></span>
+              Freezing Spray
+            </label>
+            <label class="layer-toggle">
+              <input type="checkbox" data-layer="fog" checked>
+              <span class="legend-color" style="background:#6b7280"></span>
+              Dense Fog
+            </label>
+            <label class="layer-toggle">
+              <input type="checkbox" data-layer="boundary" checked>
+              <span class="legend-line dashed" style="background:#3b82f6"></span>
+              Forecast Area
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Weather Forecast</h2>
+          <div class="tabs">
+            <button type="button" class="tab active" data-tab="input">Input</button>
+            <button type="button" class="tab" data-tab="parsed">Parsed</button>
+          </div>
+        </div>
+        <div class="panel-content">
+          <div id="tab-input" class="tab-content active">
+            <textarea id="forecast-input" placeholder="Paste weather forecast text here or click Atlantic/Pacific to auto-load…"></textarea>
+            <button type="button" id="parse-btn">Parse Forecast</button>
+          </div>
+          <div id="tab-parsed" class="tab-content">
+            <div id="parsed-output"></div>
+          </div>
+        </div>
+        <div class="area-stats" id="area-stats">
+          <h3>Wind area (nm²)</h3>
+          <p class="area-stats-hint">Total polygon area and water-only (land subtracted), by warning type. Updates with hour and warning filters.</p>
+          <div id="area-stats-body" class="area-stats-body"></div>
+        </div>
+      </div>
+    </div>
+
+    <footer class="footer">
+      <span id="valid-time">Loading forecast…</span>
+      <span id="forecast-area-label">Polygons clipped to forecast area bounds</span>
+    </footer>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
