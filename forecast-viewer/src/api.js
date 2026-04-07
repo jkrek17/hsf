@@ -11,22 +11,20 @@ const OPC_PATH = {
   pacific: '/shtml/NFDHSFEP1.txt'
 };
 
-function opcBaseUrl() {
-  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV) {
-    return '/opc';
-  }
-  return 'https://ocean.weather.gov';
-}
-
 /**
  * Fetch live High Seas Forecast text from OPC.
- * In Vite dev, uses proxy path /opc → ocean.weather.gov (CORS).
- * In production, calls OPC directly — browsers block cross-origin reads; deploy a same-origin proxy.
+ * Prefer same-origin /opc (see serve.py or your deploy proxy); fall back to direct URL
+ * (works only if the host allows CORS, which OPC does not — use a proxy in production).
  */
 export async function fetchLiveForecast(ocean) {
   const path = OPC_PATH[ocean] || OPC_PATH.atlantic;
-  const url = opcBaseUrl() + path;
-  const res = await fetch(url, { cache: 'no-store' });
+  var proxied = '/opc' + path;
+  var res = await fetch(proxied, { cache: 'no-store' }).catch(function () {
+    return null;
+  });
+  if (!res || !res.ok) {
+    res = await fetch('https://ocean.weather.gov' + path, { cache: 'no-store' });
+  }
   if (!res.ok) throw new Error('OPC HTTP ' + res.status);
   return res.text();
 }
