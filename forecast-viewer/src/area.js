@@ -58,13 +58,13 @@ function areaNm2(sqm) {
 }
 
 /**
- * Compute total and water-only areas (nm²) for wind polygons, grouped by GALE / STORM / HURRICANE.
+ * Sum polygon areas (nm²) for wind polygons by warning type — panel stats only (no land subtraction).
  */
 export function computeAreas(windAreas, forecastArea) {
   const groups = {
-    GALE: { total_nm2: 0, water_nm2: 0, count: 0 },
-    STORM: { total_nm2: 0, water_nm2: 0, count: 0 },
-    HURRICANE: { total_nm2: 0, water_nm2: 0, count: 0 }
+    GALE: { total_nm2: 0, count: 0 },
+    STORM: { total_nm2: 0, count: 0 },
+    HURRICANE: { total_nm2: 0, count: 0 }
   };
 
   if (!windAreas || !forecastArea) return groups;
@@ -91,26 +91,13 @@ export function computeAreas(windAreas, forecastArea) {
     }
 
     let totalM2 = 0;
-    let waterM2 = 0;
     try {
       totalM2 = turf.area(poly);
     } catch {
       continue;
     }
 
-    if (mergedLandFeature && mergedLandFeature.geometry) {
-      try {
-        const water = turf.difference(turf.featureCollection([poly, mergedLandFeature]));
-        waterM2 = water && water.geometry ? turf.area(water) : 0;
-      } catch {
-        waterM2 = totalM2;
-      }
-    } else {
-      waterM2 = totalM2;
-    }
-
     groups[wt].total_nm2 += areaNm2(totalM2);
-    groups[wt].water_nm2 += areaNm2(waterM2);
     groups[wt].count += 1;
   }
 
@@ -118,7 +105,7 @@ export function computeAreas(windAreas, forecastArea) {
 }
 
 /**
- * Per-polygon areas for GeoJSON export (nm²). Skips non wind_area types.
+ * Per-polygon areas for GeoJSON: total nm² and water-only nm² (land subtracted via land mask).
  */
 export function computeWindPolygonAreas(windAreas, forecastArea) {
   const out = [];

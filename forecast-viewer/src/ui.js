@@ -96,7 +96,7 @@ function updateAreaStats() {
   ];
 
   var html =
-    '<table class="area-stats-table"><thead><tr><th>Type</th><th>Polygons</th><th>Total nm²</th><th>Water nm²</th></tr></thead><tbody>';
+    '<table class="area-stats-table"><thead><tr><th>Type</th><th>Polygons</th><th>Area nm²</th></tr></thead><tbody>';
   var any = false;
   for (var i = 0; i < rows.length; i++) {
     var r = rows[i];
@@ -109,8 +109,6 @@ function updateAreaStats() {
       r.g.count +
       '</td><td>' +
       r.g.total_nm2.toLocaleString(undefined, { maximumFractionDigits: 0 }) +
-      '</td><td>' +
-      r.g.water_nm2.toLocaleString(undefined, { maximumFractionDigits: 0 }) +
       '</td></tr>';
   }
   html += '</tbody></table>';
