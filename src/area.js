@@ -37,7 +37,7 @@ function mergeLand(fc) {
 
 export async function loadLandMask() {
   if (landMaskPromise) return landMaskPromise;
-  landMaskPromise = fetch('/land.geojson')
+  landMaskPromise = fetch(new URL('../public/land.geojson', import.meta.url))
     .then((r) => {
       if (!r.ok) throw new Error('Land mask HTTP ' + r.status);
       return r.json();
