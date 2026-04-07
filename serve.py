@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Serve the forecast-viewer folder over HTTP (needed for ES modules + import maps).
+Serve this project root over HTTP (needed for ES modules + import maps).
 
   python3 serve.py
 
