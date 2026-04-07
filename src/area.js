@@ -57,6 +57,15 @@ function areaNm2(sqm) {
   return sqm * NM2_PER_M2;
 }
 
+/** Whole nm² for export — avoids implying sub-nm² precision we don't have. */
+function roundNm2Pair(totalNm2, waterNm2) {
+  var t = Math.round(totalNm2);
+  var w = Math.round(waterNm2);
+  if (w > t) w = t;
+  if (w < 0) w = 0;
+  return { area_nm2: t, area_water_nm2: w };
+}
+
 /**
  * Sum polygon areas (nm²) for wind polygons by warning type — panel stats only (no land subtraction).
  */
@@ -149,10 +158,11 @@ export function computeWindPolygonAreas(windAreas, forecastArea) {
       waterM2 = totalM2;
     }
 
+    var pair = roundNm2Pair(areaNm2(totalM2), areaNm2(waterM2));
     out.push({
       id: w.id,
-      area_nm2: areaNm2(totalM2),
-      area_water_nm2: areaNm2(waterM2)
+      area_nm2: pair.area_nm2,
+      area_water_nm2: pair.area_water_nm2
     });
   }
 
