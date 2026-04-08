@@ -568,3 +568,131 @@ html, body {
     max-height: 50vh;
   }
 }
+
+/* About modal */
+.modal[hidden] {
+  display: none !important;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px 16px;
+  overflow-y: auto;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.45);
+  cursor: pointer;
+}
+
+.modal-panel {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 640px;
+  max-height: min(85vh, 900px);
+  margin-top: 4vh;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.modal-close {
+  padding: 4px 10px;
+  border: none;
+  background: transparent;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: #6b7280;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.modal-close:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.modal-body {
+  padding: 16px 18px 20px;
+  overflow-y: auto;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #374151;
+}
+
+.modal-body h3 {
+  margin: 18px 0 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.modal-body h3:first-of-type {
+  margin-top: 0;
+}
+
+.modal-body p {
+  margin: 0 0 10px;
+}
+
+.modal-body ul {
+  margin: 0 0 10px;
+  padding-left: 1.25rem;
+}
+
+.modal-body li {
+  margin-bottom: 6px;
+}
+
+.modal-body code {
+  font-size: 12px;
+  background: #f3f4f6;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.modal-lead {
+  font-size: 14px;
+  color: #1f2937;
+}
+
+.modal-formula {
+  margin: 8px 0 12px;
+  padding: 10px 12px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}

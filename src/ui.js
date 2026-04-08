@@ -329,8 +329,46 @@ async function archiveNavigate(delta) {
   }
 }
 
+function initAboutModal() {
+  var modal = document.getElementById('about-modal');
+  var openBtn = document.getElementById('about-btn');
+  if (!modal || !openBtn) return;
+
+  function openModal() {
+    modal.hidden = false;
+    modal.removeAttribute('hidden');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    var closeBtn = modal.querySelector('.modal-close');
+    if (closeBtn) closeBtn.focus();
+  }
+
+  function closeModal() {
+    modal.hidden = true;
+    modal.setAttribute('hidden', '');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+    openBtn.focus();
+  }
+
+  openBtn.addEventListener('click', function () {
+    openModal();
+  });
+
+  modal.querySelectorAll('[data-close-modal]').forEach(function (el) {
+    el.addEventListener('click', function () {
+      closeModal();
+    });
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !modal.hidden) closeModal();
+  });
+}
+
 export function initUI() {
   initMap();
+  initAboutModal();
 
   var dateEl = document.getElementById('archive-date');
   if (dateEl && !dateEl.value) dateEl.value = utcTodayYmd();

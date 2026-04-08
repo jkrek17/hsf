@@ -22,6 +22,7 @@
     <header class="header">
       <div class="header-title">
         <h1>Marine Weather Forecast Viewer</h1>
+        <button type="button" id="about-btn" class="ocean-btn about-btn" title="About this app">About</button>
         <div class="ocean-buttons">
           <button type="button" id="btn-atlantic" class="ocean-btn active">Atlantic</button>
           <button type="button" id="btn-pacific" class="ocean-btn">Pacific</button>
@@ -149,6 +150,54 @@
       <span id="valid-time">Loading forecast…</span>
       <span id="forecast-area-label">Polygons clipped to forecast area bounds</span>
     </footer>
+  </div>
+
+  <div id="about-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="about-title" aria-hidden="true" hidden>
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal-panel">
+      <div class="modal-header">
+        <h2 id="about-title">About this viewer</h2>
+        <button type="button" class="modal-close" data-close-modal aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-lead">
+          This app parses <strong>NOAA OPC High Seas Forecast</strong> text and draws gale, storm, hurricane-force wind areas, sub-gale winds, dense fog, freezing spray, and low centers on a map. It is for situational awareness, not navigation.
+        </p>
+
+        <h3>Data sources</h3>
+        <ul>
+          <li><strong>Live</strong> — National Weather Service API (<code>api.weather.gov</code>): product type <strong>HSF</strong>, locations <strong>AT1</strong> (Atlantic) and <strong>EP1</strong> (Pacific). A descriptive User-Agent is sent as required.</li>
+          <li><strong>Archive</strong> — Iowa Environmental Mesonet (IEM): list and retrieve historical text by UTC date. The <strong>◀ / ▶</strong> buttons step through issuances; at the first or last of a day they load the previous or next UTC calendar day (skipping empty days).</li>
+          <li><strong>Basemap</strong> — CartoDB Light (OpenStreetMap data).</li>
+          <li><strong>Land mask</strong> — Natural Earth 1:110m physical land (<code>public/land.geojson</code>), used only for water-area calculations.</li>
+        </ul>
+
+        <h3>Map and filters</h3>
+        <p>
+          Polygons are clipped to the Atlantic or Pacific forecast domain. Pacific longitudes follow the bulletin (often 0–360°) for display. Use <strong>Hour</strong> and <strong>Warning</strong> filters to limit forecast periods and warning blocks. Layer checkboxes toggle feature types. The side panel shows raw text, a parsed summary, and <strong>wind-area totals</strong> (sum of polygon areas in square nautical miles by gale / storm / hurricane — these totals do <em>not</em> subtract land).
+        </p>
+
+        <h3>GeoJSON export</h3>
+        <p>
+          Exports filtered features with metadata (ocean, valid time, filters, feature count). Wind polygons may include <code>area_nm2</code> (total polygon) and <code>area_water_nm2</code> (after subtracting land); both are rounded to whole nm².
+        </p>
+
+        <h3>Area formulas</h3>
+        <p>Geometry is built with <strong>Turf.js</strong> on WGS 84. For the Pacific basin, longitudes &gt; 180° are converted with <strong>λ′ = λ − 360°</strong> before area operations.</p>
+        <p><strong>Area in m²:</strong> <code>turf.area(polygon)</code> returns geodesic area in square meters.</p>
+        <p><strong>Square nautical miles:</strong> 1 nautical mile = 1852 m, so</p>
+        <pre class="modal-formula">1 nm² = 1852² m² = 3,429,904 m²
+
+A_nm² = A_m² ÷ 3,429,904</pre>
+        <p><strong>Water-only area:</strong> merged land polygons are subtracted from each wind polygon (<code>turf.difference</code>), then the same m² → nm² conversion applies. The land layer is generalized; near coasts, water area is approximate. If the mask fails to load, water area matches total area for that feature.</p>
+
+        <h3>Popups</h3>
+        <p>Wind popups show <strong>Water area</strong> (nm²) when available, using the same land subtraction as export.</p>
+
+        <h3>Technical stack</h3>
+        <p>Static site: ES modules, vendored Leaflet and Turf under <code>vendor/</code>, no npm required. Serve over HTTP (e.g. <code>python3 serve.py</code>). See the repository <strong>README.md</strong> for full detail.</p>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="src/main.js"></script>
