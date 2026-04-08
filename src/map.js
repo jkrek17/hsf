@@ -159,12 +159,19 @@ export function renderForecast(forecast, filter, warningFilter, layerVisibility,
       label = 'Storm Warning';
     } else if (w.warningType === 'SUB-GALE') {
       layerKey = 'subgale';
-      color = '#16a34a';
+      color = '#22c55e';
       label = 'Sub-Gale Winds';
     }
     if (!layerVisibility[layerKey]) continue;
     if (w.bounds.length >= 3) {
-      var badgeClass = w.warningType === 'HURRICANE' ? 'hurricane' : w.warningType === 'STORM' ? 'storm' : 'gale';
+      var badgeClass =
+        w.warningType === 'HURRICANE'
+          ? 'hurricane'
+          : w.warningType === 'STORM'
+            ? 'storm'
+            : w.warningType === 'SUB-GALE'
+              ? 'subgale'
+              : 'gale';
       var badgeText = w.warningType === 'HURRICANE' ? 'Hurricane' : w.warningType === 'STORM' ? 'Storm' : w.warningType === 'SUB-GALE' ? 'Sub-Gale' : 'Gale';
       var areaRows = '';
       if (windAreaById && w.id && windAreaById.has(w.id)) {

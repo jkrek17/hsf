@@ -485,6 +485,7 @@ html, body {
 .popup-header.fog { background: #4b5563; }
 .popup-header.spray { background: #0891b2; }
 .popup-header.gale { background: #d97706; }
+.popup-header.subgale { background: #22c55e; }
 .popup-header.storm { background: #dc2626; }
 .popup-header.hurricane { background: #9333ea; }
 .popup-header.low { background: #1f2937; }
