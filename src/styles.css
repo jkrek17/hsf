@@ -245,6 +245,12 @@ html, body {
   border: 1px solid rgba(0, 0, 0, 0.12);
 }
 
+.legend-color-hurricane { background: #a855f7; }
+.legend-color-storm { background: #ef4444; }
+.legend-color-gale { background: #f59e0b; }
+.legend-color-subgale { background: #22c55e; }
+.legend-color-fog { background: #6b7280; }
+
 .legend-line {
   width: 18px;
   height: 4px;
@@ -252,10 +258,18 @@ html, body {
   flex-shrink: 0;
 }
 
+.legend-line-spray {
+  background: #06b6d4;
+}
+
 .legend-line.dashed {
   height: 0;
   border-bottom: 3px dashed;
-  background: transparent !important;
+  background: transparent;
+  border-color: #3b82f6;
+}
+
+.legend-line-boundary.dashed {
   border-color: #3b82f6;
 }
 

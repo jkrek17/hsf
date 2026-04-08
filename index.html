@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Marine Weather Forecast Viewer</title>
-  <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
-  <link rel="stylesheet" href="src/styles.css" />
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="src/styles.css">
   <script src="vendor/turf.min.js"></script>
   <script src="vendor/leaflet/leaflet.js"></script>
   <script type="importmap">
@@ -76,22 +76,22 @@
             <h4>WARNINGS</h4>
             <label class="layer-toggle">
               <input type="checkbox" data-layer="hurricane" checked>
-              <span class="legend-color" style="background:#a855f7"></span>
+              <span class="legend-color legend-color-hurricane"></span>
               Hurricane (64+ kt)
             </label>
             <label class="layer-toggle">
               <input type="checkbox" data-layer="storm" checked>
-              <span class="legend-color" style="background:#ef4444"></span>
+              <span class="legend-color legend-color-storm"></span>
               Storm (48-63 kt)
             </label>
             <label class="layer-toggle">
               <input type="checkbox" data-layer="gale" checked>
-              <span class="legend-color" style="background:#f59e0b"></span>
+              <span class="legend-color legend-color-gale"></span>
               Gale (34-47 kt)
             </label>
             <label class="layer-toggle">
               <input type="checkbox" data-layer="subgale" checked>
-              <span class="legend-color" style="background:#22c55e"></span>
+              <span class="legend-color legend-color-subgale"></span>
               Sub-Gale (&lt;34 kt)
             </label>
           </div>
@@ -104,17 +104,17 @@
             </label>
             <label class="layer-toggle">
               <input type="checkbox" data-layer="spray" checked>
-              <span class="legend-line" style="background:#06b6d4"></span>
+              <span class="legend-line legend-line-spray"></span>
               Freezing Spray
             </label>
             <label class="layer-toggle">
               <input type="checkbox" data-layer="fog" checked>
-              <span class="legend-color" style="background:#6b7280"></span>
+              <span class="legend-color legend-color-fog"></span>
               Dense Fog
             </label>
             <label class="layer-toggle">
               <input type="checkbox" data-layer="boundary" checked>
-              <span class="legend-line dashed" style="background:#3b82f6"></span>
+              <span class="legend-line dashed legend-line-boundary"></span>
               Forecast Area
             </label>
           </div>
