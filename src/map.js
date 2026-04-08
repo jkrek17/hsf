@@ -169,17 +169,11 @@ export function renderForecast(forecast, filter, warningFilter, layerVisibility,
       var areaRows = '';
       if (windAreaById && w.id && windAreaById.has(w.id)) {
         var am = windAreaById.get(w.id);
-        if (am && typeof am.area_nm2 === 'number') {
+        if (am && typeof am.area_water_nm2 === 'number') {
           areaRows +=
-            '<div class="popup-row"><span class="popup-label">Area</span><span class="popup-value">' +
-            Math.round(am.area_nm2).toLocaleString() +
+            '<div class="popup-row"><span class="popup-label">Water area</span><span class="popup-value">' +
+            Math.round(am.area_water_nm2).toLocaleString() +
             ' nm²</span></div>';
-          if (typeof am.area_water_nm2 === 'number') {
-            areaRows +=
-              '<div class="popup-row"><span class="popup-label">Water area</span><span class="popup-value">' +
-              Math.round(am.area_water_nm2).toLocaleString() +
-              ' nm²</span></div>';
-          }
         }
       }
       var popup =
