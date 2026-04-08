@@ -58,6 +58,32 @@ function formatArchiveFooter(iso) {
   );
 }
 
+/** YYYY-MM-DD UTC calendar date plus delta whole days. */
+function addUtcDays(ymd, deltaDays) {
+  var parts = ymd.split('-');
+  var y = parseInt(parts[0], 10);
+  var mo = parseInt(parts[1], 10) - 1;
+  var d = parseInt(parts[2], 10);
+  var dt = new Date(Date.UTC(y, mo, d));
+  dt.setUTCDate(dt.getUTCDate() + deltaDays);
+  var yy = dt.getUTCFullYear();
+  var mm = String(dt.getUTCMonth() + 1).padStart(2, '0');
+  var dd = String(dt.getUTCDate()).padStart(2, '0');
+  return yy + '-' + mm + '-' + dd;
+}
+
+function populateIssuanceSelect(timestamps) {
+  var select = document.getElementById('archive-issuance');
+  select.innerHTML = '';
+  for (var i = 0; i < timestamps.length; i++) {
+    var iso = timestamps[i];
+    var opt = document.createElement('option');
+    opt.value = iso;
+    opt.textContent = formatArchiveFooter(iso);
+    select.appendChild(opt);
+  }
+}
+
 function matchesWarningFilter(item, filter) {
   return filter === 'all' || item.warningBlock === filter;
 }
@@ -235,18 +261,11 @@ async function onArchiveDateChange() {
   select.innerHTML = '<option value="">Loading…</option>';
   try {
     archiveTimestamps = await fetchArchiveList(currentOcean, ymd);
-    select.innerHTML = '';
     if (archiveTimestamps.length === 0) {
       select.innerHTML = '<option value="">No issuances found</option>';
       return;
     }
-    for (var i = 0; i < archiveTimestamps.length; i++) {
-      var iso = archiveTimestamps[i];
-      var opt = document.createElement('option');
-      opt.value = iso;
-      opt.textContent = formatArchiveFooter(iso);
-      select.appendChild(opt);
-    }
+    populateIssuanceSelect(archiveTimestamps);
     select.value = archiveTimestamps[archiveTimestamps.length - 1];
     await loadArchiveAt(select.value);
   } catch (err) {
@@ -255,16 +274,59 @@ async function onArchiveDateChange() {
   }
 }
 
-function archiveNavigate(delta) {
-  if (archiveTimestamps.length === 0) return;
+var ARCHIVE_DAY_SEARCH_MAX = 45;
+
+/**
+ * Step prev/next issuance; at day boundary load adjacent UTC calendar day
+ * (first issuance when going forward, last when going back). Skips empty days.
+ */
+async function archiveNavigate(delta) {
+  var dateInput = document.getElementById('archive-date');
   var select = document.getElementById('archive-issuance');
+  var ymd = dateInput.value;
+  if (!ymd) return;
+
+  if (archiveTimestamps.length === 0) {
+    await onArchiveDateChange();
+    if (archiveTimestamps.length === 0) return;
+  }
+
   var idx = select.selectedIndex;
   if (idx < 0) idx = 0;
   var ni = idx + delta;
-  if (ni < 0 || ni >= select.options.length) return;
-  select.selectedIndex = ni;
-  var val = select.value;
-  if (val) loadArchiveAt(val);
+
+  if (ni >= 0 && ni < select.options.length && select.options[ni].value) {
+    select.selectedIndex = ni;
+    await loadArchiveAt(select.value);
+    return;
+  }
+
+  var dayStep = delta > 0 ? 1 : -1;
+  var newYmd = addUtcDays(ymd, dayStep);
+  var activeBtn = currentOcean === 'atlantic' ? document.getElementById('btn-atlantic') : document.getElementById('btn-pacific');
+  activeBtn.classList.add('loading');
+  document.getElementById('valid-time').textContent = 'Loading archive (next day)…';
+  try {
+    for (var h = 0; h < ARCHIVE_DAY_SEARCH_MAX; h++) {
+      var stamps = await fetchArchiveList(currentOcean, newYmd);
+      if (stamps.length > 0) {
+        archiveTimestamps = stamps;
+        dateInput.value = newYmd;
+        populateIssuanceSelect(stamps);
+        var pick = delta > 0 ? 0 : stamps.length - 1;
+        select.selectedIndex = pick;
+        await loadArchiveAt(stamps[pick]);
+        return;
+      }
+      newYmd = addUtcDays(newYmd, dayStep);
+    }
+    document.getElementById('valid-time').textContent =
+      'No archive issuances found within ' + ARCHIVE_DAY_SEARCH_MAX + ' days in that direction.';
+  } catch (err) {
+    document.getElementById('valid-time').textContent = 'Archive: ' + (err.message || err);
+  } finally {
+    activeBtn.classList.remove('loading');
+  }
 }
 
 export function initUI() {
@@ -349,10 +411,14 @@ export function initUI() {
     if (v) loadArchiveAt(v);
   });
   document.getElementById('archive-prev').addEventListener('click', function () {
-    archiveNavigate(-1);
+    archiveNavigate(-1).catch(function (err) {
+      document.getElementById('valid-time').textContent = 'Archive: ' + (err.message || err);
+    });
   });
   document.getElementById('archive-next').addEventListener('click', function () {
-    archiveNavigate(1);
+    archiveNavigate(1).catch(function (err) {
+      document.getElementById('valid-time').textContent = 'Archive: ' + (err.message || err);
+    });
   });
   document.getElementById('archive-live').addEventListener('click', function () {
     loadOceanForecast(currentOcean);
