@@ -1,3 +1,5 @@
+import turf from '@turf/turf';
+
 // Configurable forecast areas for different oceans
 export const FORECAST_AREAS = {
   atlantic: {
@@ -194,17 +196,13 @@ function parseQuadrantSpecs(text) {
     specs.push({ radiusNm: parseInt(match[1]), direction: match[2].toUpperCase(), sectorType: 'semicircle' });
     if (match[3]) specs.push({ radiusNm: parseInt(match[1]), direction: match[3].toUpperCase(), sectorType: 'semicircle' });
   }
-  var multiQuadrantPattern = /(\d+)\s*NM\s+(NE|NW|SE|SW|N|E|S|W)(?:\s+AND\s+(NE|NW|SE|SW|N|E|S|W))?(?:\s+(?:QUADRANTS?|QUARANTS?))?/gi;
+  var multiQuadrantPattern = /(\d+)\s*NM\s+(NE|NW|SE|SW|N|E|S|W)(?:\s+AND\s+(NE|NW|SE|SW|N|E|S|W))?\s+(?:QUADRANTS?|QUARANTS?)/gi;
   while ((match = multiQuadrantPattern.exec(text)) !== null) {
     var radius = parseInt(match[1]);
     var dir1 = match[2].toUpperCase();
     var dir2 = match[3] ? match[3].toUpperCase() : null;
-    var tailAfterMatch = text.slice(match.index + match[0].length);
-    if (dir1 === 'E' && /^\s*ITHER\b/i.test(tailAfterMatch)) continue;
     var alreadyMatched = specs.some(function(s) { return (s.sectorType === 'circle' || s.sectorType === 'semicircle' || s.isAnnulus) && s.radiusNm === radius && s.direction === dir1; });
     if (alreadyMatched) continue;
-    var textAfter = text.slice(match.index + match[0].length, match.index + match[0].length + 15);
-    if (/^\s*SEMICIRCLE/i.test(textAfter)) continue;
     specs.push({ radiusNm: radius, direction: dir1, sectorType: 'quadrant' });
     if (dir2) specs.push({ radiusNm: radius, direction: dir2, sectorType: 'quadrant' });
   }
@@ -249,43 +247,67 @@ function parseFromToBetween(text) {
   return result;
 }
 
-/** Initial bearing from A to B (degrees, 0 = north, 90 = east). */
-function initialBearingDeg(A, B) {
-  var φ1 = (A.lat * Math.PI) / 180;
-  var φ2 = (B.lat * Math.PI) / 180;
-  var Δλ = ((B.lon - A.lon) * Math.PI) / 180;
-  var y = Math.sin(Δλ) * Math.cos(φ2);
-  var x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
-  return (Math.atan2(y, x) * 180) / Math.PI;
-}
-
-function offsetPointNm(pt, bearingDeg, distanceNm) {
-  var nmToDegreesLat = 1 / 60;
-  var nmToDegreesLon = 1 / (60 * Math.cos((pt.lat * Math.PI) / 180));
-  var rad = ((((bearingDeg + 360) % 360) * Math.PI) / 180);
-  return {
-    lat: pt.lat + distanceNm * nmToDegreesLat * Math.cos(rad),
-    lon: pt.lon + distanceNm * nmToDegreesLon * Math.sin(rad)
-  };
+function lonLatForTurf(p) {
+  var lon = p.lon;
+  if (FORECAST_AREA.crossesDateline && lon > 180) lon -= 360;
+  return [lon, p.lat];
 }
 
 /**
- * Corridor on both sides of a 2-point line: parallelogram (perpendicular offsets),
- * not a convex hull of cardinal offsets (which can look like a quadrant).
+ * Corridor on both sides of a polyline (2+ points): Turf buffer in km.
+ * Returns { lat, lon }[] outer ring for clipping.
  */
-function createLineBufferParallelogram(linePoints, distanceNm) {
+function createLineBufferCorridor(linePoints, distanceNm) {
   if (linePoints.length < 2) return [];
-  if (linePoints.length > 2) return [];
-  var A = linePoints[0];
-  var B = linePoints[1];
-  var brg = initialBearingDeg(A, B);
-  var left = brg - 90;
-  var right = brg + 90;
-  var ALeft = offsetPointNm(A, left, distanceNm);
-  var BLeft = offsetPointNm(B, left, distanceNm);
-  var BRight = offsetPointNm(B, right, distanceNm);
-  var ARight = offsetPointNm(A, right, distanceNm);
-  return [ALeft, BLeft, BRight, ARight];
+  var distanceKm = distanceNm * 1.852;
+  var coords = [];
+  for (var i = 0; i < linePoints.length; i++) {
+    coords.push(lonLatForTurf(linePoints[i]));
+  }
+  var line;
+  try {
+    line = turf.lineString(coords);
+  } catch (e) {
+    return [];
+  }
+  var buf;
+  try {
+    buf = turf.buffer(line, distanceKm, { units: 'kilometers' });
+  } catch (e2) {
+    return [];
+  }
+  if (!buf || !buf.geometry) return [];
+  var g = buf.geometry;
+  function ringToLatLon(ringCoords) {
+    return ringCoords.slice(0, -1).map(function (c) {
+      var lon = c[0];
+      var lat = c[1];
+      if (FORECAST_AREA.crossesDateline && lon < 0) lon += 360;
+      return { lat: lat, lon: lon };
+    });
+  }
+  if (g.type === 'Polygon') {
+    return ringToLatLon(g.coordinates[0]);
+  }
+  if (g.type === 'MultiPolygon') {
+    var bestRing = null;
+    var bestArea = -1;
+    for (var pi = 0; pi < g.coordinates.length; pi++) {
+      try {
+        var poly = turf.polygon(g.coordinates[pi]);
+        var a = turf.area(poly);
+        if (a > bestArea) {
+          bestArea = a;
+          bestRing = g.coordinates[pi][0];
+        }
+      } catch (e3) {
+        continue;
+      }
+    }
+    if (!bestRing) return [];
+    return ringToLatLon(bestRing);
+  }
+  return [];
 }
 
 function createLineBufferPolygon(linePoints, distanceNm, directions) {
@@ -372,7 +394,7 @@ function parseFrontLineArea(text, contextLowCenter) {
       }
     }
     if (linePointsE.length >= 2) {
-      var boundsE = createLineBufferParallelogram(linePointsE, distanceNmE);
+      var boundsE = createLineBufferCorridor(linePointsE, distanceNmE);
       if (boundsE.length >= 3) {
         return {
           bounds: clipPolygonToBounds(boundsE),
@@ -520,7 +542,7 @@ export function parseForecast(text) {
   if (validMatch) result.validTime = validMatch[1];
   var warningBlocks = text.split(/(?=\.{3}[A-Z]+\s+WARNING\.{3}|…[A-Z]+\s+WARNING…)/i);
   var globalWarningId = 0; var blockIndex = 0;
-  var fogPattern = /\.(?:(\d+)\s*HOUR\s*FORECAST\s+)?DENSE\s+FOG[^.]*FROM\s+(\d+)(N|S)\s+TO\s+(\d+)(N|S)\s+BETWEEN\s+(\d+)(W|E)\s+AND\s+(\d+)(W|E)/gi;
+  var fogPattern = /\.(?:(\d+)\s*HOUR\s*FORECAST\s+)?DENSE\s+FOG[^.]*FROM\s+(\d+)(N|S)\s+TO\s+(\d+)(N|S)\s+BETWEEN\s+(\d+)(W|E)\s+(?:AND|TO)\s+(\d+)(W|E)/gi;
   var fogMatch;
   while ((fogMatch = fogPattern.exec(text)) !== null) {
     var fh = fogMatch[1] ? fogMatch[1] + 'h' : 'current';
