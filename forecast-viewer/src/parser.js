@@ -199,6 +199,8 @@ function parseQuadrantSpecs(text) {
     var radius = parseInt(match[1]);
     var dir1 = match[2].toUpperCase();
     var dir2 = match[3] ? match[3].toUpperCase() : null;
+    var tailAfterMatch = text.slice(match.index + match[0].length);
+    if (dir1 === 'E' && /^\s*ITHER\b/i.test(tailAfterMatch)) continue;
     var alreadyMatched = specs.some(function(s) { return (s.sectorType === 'circle' || s.sectorType === 'semicircle' || s.isAnnulus) && s.radiusNm === radius && s.direction === dir1; });
     if (alreadyMatched) continue;
     var textAfter = text.slice(match.index + match[0].length, match.index + match[0].length + 15);
@@ -237,7 +239,7 @@ function parseFromToBetween(text) {
     if (latMatch[4].toUpperCase() === 'S') lat2 = -lat2;
     result.latRange = [Math.min(lat1,lat2), Math.max(lat1,lat2)];
   }
-  var lonMatch = text.match(/BETWEEN\s+(\d+)(E|W)\s+AND\s+(\d+)(E|W)/i);
+  var lonMatch = text.match(/BETWEEN\s+(\d+)(E|W)\s+(?:AND|TO)\s+(\d+)(E|W)/i);
   if (lonMatch) {
     var lon1 = parseFloat(lonMatch[1]); var lon2 = parseFloat(lonMatch[3]);
     if (lonMatch[2].toUpperCase() === 'W') lon1 = FORECAST_AREA.crossesDateline ? 360-lon1 : -lon1;
@@ -247,10 +249,49 @@ function parseFromToBetween(text) {
   return result;
 }
 
+/** Initial bearing from A to B (degrees, 0 = north, 90 = east). */
+function initialBearingDeg(A, B) {
+  var φ1 = (A.lat * Math.PI) / 180;
+  var φ2 = (B.lat * Math.PI) / 180;
+  var Δλ = ((B.lon - A.lon) * Math.PI) / 180;
+  var y = Math.sin(Δλ) * Math.cos(φ2);
+  var x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+  return (Math.atan2(y, x) * 180) / Math.PI;
+}
+
+function offsetPointNm(pt, bearingDeg, distanceNm) {
+  var nmToDegreesLat = 1 / 60;
+  var nmToDegreesLon = 1 / (60 * Math.cos((pt.lat * Math.PI) / 180));
+  var rad = ((((bearingDeg + 360) % 360) * Math.PI) / 180);
+  return {
+    lat: pt.lat + distanceNm * nmToDegreesLat * Math.cos(rad),
+    lon: pt.lon + distanceNm * nmToDegreesLon * Math.sin(rad)
+  };
+}
+
+/**
+ * Corridor on both sides of a 2-point line: parallelogram (perpendicular offsets),
+ * not a convex hull of cardinal offsets (which can look like a quadrant).
+ */
+function createLineBufferParallelogram(linePoints, distanceNm) {
+  if (linePoints.length < 2) return [];
+  if (linePoints.length > 2) return [];
+  var A = linePoints[0];
+  var B = linePoints[1];
+  var brg = initialBearingDeg(A, B);
+  var left = brg - 90;
+  var right = brg + 90;
+  var ALeft = offsetPointNm(A, left, distanceNm);
+  var BLeft = offsetPointNm(B, left, distanceNm);
+  var BRight = offsetPointNm(B, right, distanceNm);
+  var ARight = offsetPointNm(A, right, distanceNm);
+  return [ALeft, BLeft, BRight, ARight];
+}
+
 function createLineBufferPolygon(linePoints, distanceNm, directions) {
   if (linePoints.length < 2) return [];
-  var nmToDegreesLat = 1/60;
-  var directionBearings = { N:0, NE:45, E:90, SE:135, S:180, SW:225, W:270, NW:315 };
+  var nmToDegreesLat = 1 / 60;
+  var directionBearings = { N: 0, NE: 45, E: 90, SE: 135, S: 180, SW: 225, W: 270, NW: 315 };
 
   var bearings = [];
   for (var d = 0; d < directions.length; d++) {
@@ -260,8 +301,8 @@ function createLineBufferPolygon(linePoints, distanceNm, directions) {
   if (bearings.length === 0) return [];
 
   function offsetPoint(pt, bearing) {
-    var nmToDegreesLon = 1 / (60 * Math.cos(pt.lat * Math.PI / 180));
-    var rad = ((bearing % 360 + 360) % 360) * Math.PI / 180;
+    var nmToDegreesLon = 1 / (60 * Math.cos((pt.lat * Math.PI) / 180));
+    var rad = ((((bearing % 360) + 360) % 360) * Math.PI) / 180;
     return {
       lat: pt.lat + distanceNm * nmToDegreesLat * Math.cos(rad),
       lon: pt.lon + distanceNm * nmToDegreesLon * Math.sin(rad)
@@ -315,6 +356,34 @@ function convexHull(points) {
 }
 
 function parseFrontLineArea(text, contextLowCenter) {
+  var eitherMatch = text.match(/WITHIN\s+(\d+)\s*NM\s+EITHER\s+SIDE\s+OF\s+A\s+LINE\s+FROM\s+(.+?)(?:\s+WINDS|\s+SEAS|\s*$)/i);
+  if (eitherMatch) {
+    var distanceNmE = parseFloat(eitherMatch[1]);
+    var pointStringsE = eitherMatch[2].split(/\s+TO\s+/i);
+    var linePointsE = [];
+    for (var ei = 0; ei < pointStringsE.length; ei++) {
+      var trimmedE = pointStringsE[ei].trim();
+      if (!trimmedE) continue;
+      if (/^(?:THE\s+)?LOW(?:\s+CENTER)?$/i.test(trimmedE)) {
+        if (contextLowCenter) linePointsE.push(contextLowCenter);
+      } else {
+        var coordE = parseCoordinate(trimmedE);
+        if (coordE) linePointsE.push(coordE);
+      }
+    }
+    if (linePointsE.length >= 2) {
+      var boundsE = createLineBufferParallelogram(linePointsE, distanceNmE);
+      if (boundsE.length >= 3) {
+        return {
+          bounds: clipPolygonToBounds(boundsE),
+          distanceNm: distanceNmE,
+          directions: ['EITHER_SIDE'],
+          linePoints: linePointsE
+        };
+      }
+    }
+  }
+
   var withinMatch = text.match(/WITHIN\s+(\d+)\s*NM\s+([NESW]+(?:\s+AND\s+[NESW]+)*)\s+OF\s+A\s+(?:FRONT|LINE)/i);
   if (!withinMatch) return null;
   var distanceNm = parseFloat(withinMatch[1]);
@@ -390,12 +459,13 @@ function parseWindAreas(text, sectionWarningType, baseId, contextLowCenter) {
     }
     if (results.length > 0) return results;
   }
-  if (/\b(?:FRONT|LINE)\s+(?:TO\s+EXTEND|EXTENDING|FROM)\b/i.test(text)) {
+  if (/\b(?:FRONT|LINE)\s+(?:TO\s+EXTEND|EXTENDING|FROM)\b/i.test(text) || /\bEITHER\s+SIDE\s+OF\s+A\s+LINE\b/i.test(text)) {
     var frontArea = parseFrontLineArea(text, contextLowCenter);
     if (frontArea && frontArea.bounds.length >= 3) {
       results.push({ id: baseId + '-front', type: 'front-buffer', bounds: frontArea.bounds, windSpeed: windSpeed, seas: seas || undefined, warningType: warningType, description: description, distanceNm: frontArea.distanceNm, directions: frontArea.directions });
       var frontPattern = /WITHIN\s+\d+\s*NM\s+[NESW]+(?:\s+AND\s+[NESW]+)*\s+OF\s+A\s+(?:FRONT|LINE)\s*(?:(?:TO\s+)?EXTEND(?:ING)?\s+)?FROM\s+(?:(?:THE\s+)?LOW(?:\s+CENTER)?|\d+(?:\.\d+)?[NS]\d+(?:\.\d+)?[EW])(?:\s+TO\s+(?:(?:THE\s+)?LOW(?:\s+CENTER)?|\d+(?:\.\d+)?[NS]\d+(?:\.\d+)?[EW]))+/gi;
-      text = text.replace(frontPattern, ' ').replace(/\s+/g, ' ').trim();
+      var eitherStrip = /WITHIN\s+\d+\s*NM\s+EITHER\s+SIDE\s+OF\s+A\s+LINE\s+FROM\s+[\d\w\s]+?(?=\s+WINDS|\s+SEAS|\s*$)/gi;
+      text = text.replace(frontPattern, ' ').replace(eitherStrip, ' ').replace(/\s+/g, ' ').trim();
     }
   }
   if ((text.indexOf('WITHIN') > -1 || text.indexOf('BETWEEN') > -1) && text.indexOf('NM') > -1) {
