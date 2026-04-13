@@ -254,8 +254,9 @@ function lonLatForTurf(p) {
 }
 
 /**
- * Corridor on both sides of a polyline (2+ points): Turf buffer in km.
- * Returns { lat, lon }[] outer ring for clipping.
+ * "EITHER SIDE OF A LINE" = all points within XX NM perpendicular to the polyline
+ * (a filled corridor / band). That is one closed polygon; we return its outer boundary
+ * as { lat, lon }[] for clipping. Turf buffer (km) approximates that region.
  */
 function createLineBufferCorridor(linePoints, distanceNm) {
   if (linePoints.length < 2) return [];
